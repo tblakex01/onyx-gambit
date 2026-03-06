@@ -1,0 +1,5 @@
+Stockfish release: sf_18
+Asset: stockfish-macos-x86-64.tar
+Binary URL: https://github.com/official-stockfish/Stockfish/releases/download/sf_18/stockfish-macos-x86-64.tar
+Source repository: https://github.com/official-stockfish/Stockfish
+License: GPL-3.0-or-later

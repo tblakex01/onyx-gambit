@@ -201,6 +201,7 @@ export class BoardScene {
     this.highlights = [];
     this.animations = [];
     this.pendingBoard = null;
+    this.idleResolvers = [];
     this.materials = createPieceMaterials();
     this.buildEnvironment();
     this.bindEvents();
@@ -370,6 +371,7 @@ export class BoardScene {
       return;
     }
     this.renderPieces(board);
+    this.resolveIdle();
   }
 
   animateMove(move, nextBoard) {
@@ -450,7 +452,25 @@ export class BoardScene {
     if (!this.animations.length && this.pendingBoard) {
       this.renderPieces(this.pendingBoard);
       this.pendingBoard = null;
+      this.resolveIdle();
     }
+
+    if (!this.animations.length && !this.pendingBoard) {
+      this.resolveIdle();
+    }
+  }
+
+  waitForIdle() {
+    if (!this.animations.length && !this.pendingBoard) return Promise.resolve();
+    return new Promise((resolve) => {
+      this.idleResolvers.push(resolve);
+    });
+  }
+
+  resolveIdle() {
+    if (this.animations.length || this.pendingBoard || !this.idleResolvers.length) return;
+    const resolvers = this.idleResolvers.splice(0, this.idleResolvers.length);
+    resolvers.forEach((resolve) => resolve());
   }
 
   positionCamera(delta) {

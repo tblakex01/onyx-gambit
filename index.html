@@ -21,7 +21,7 @@
           <h1>Glass Marble Chess</h1>
         </div>
         <p class="hero-copy">
-          A dramatic tabletop of smoked glass, carved stone, and cinematic light.
+          A cinematic chess table with live engine play, replay review, timed modes, and post-game analysis.
         </p>
       </header>
 
@@ -29,9 +29,25 @@
         <section class="board-frame">
           <div class="board-stage" data-testid="board-stage">
             <canvas id="board-canvas" aria-label="3D chess board"></canvas>
+
+            <div class="stage-topbar">
+              <div class="clock-card" data-testid="black-clock">
+                <span class="clock-label">Black</span>
+                <strong id="black-clock">05:00</strong>
+              </div>
+              <div class="stage-status">
+                <span id="turn-indicator" data-testid="turn-indicator"></span>
+                <span id="engine-status"></span>
+              </div>
+              <div class="clock-card" data-testid="white-clock">
+                <span class="clock-label">White</span>
+                <strong id="white-clock">05:00</strong>
+              </div>
+            </div>
+
             <div class="stage-caption">
-              <span>Click a piece, then click a destination square.</span>
               <span id="selection-label" data-testid="selection-label">No piece selected</span>
+              <span id="thinking-indicator">Waiting for input</span>
             </div>
           </div>
         </section>
@@ -39,14 +55,84 @@
         <aside class="sidebar">
           <section class="panel">
             <div class="panel-head">
-              <p class="eyebrow">Match State</p>
-              <p id="turn-indicator" data-testid="turn-indicator"></p>
+              <p class="eyebrow">Game Modes</p>
+              <p id="status-line" class="status-line" data-testid="status-line"></p>
             </div>
-            <p class="status-line" id="status-line" data-testid="status-line"></p>
-            <div class="button-row">
-              <button id="new-game" data-testid="new-game">New game</button>
-              <button id="undo-move" data-testid="undo-move">Undo</button>
+            <div class="mode-grid">
+              <button class="mode-button is-active" data-mode="human-vs-human">Human vs Human</button>
+              <button class="mode-button" data-mode="play-against-ai">Play against AI</button>
+              <button class="mode-button" data-mode="ai-play">AI Play</button>
+            </div>
+            <div class="control-grid">
+              <label>
+                <span>Human color</span>
+                <select id="human-color">
+                  <option value="w">White</option>
+                  <option value="b">Black</option>
+                </select>
+              </label>
+              <label>
+                <span>Clock preset</span>
+                <select id="clock-preset">
+                  <option value="untimed">Untimed</option>
+                  <option value="bullet">Bullet</option>
+                  <option value="blitz">Blitz</option>
+                  <option value="rapid">Rapid</option>
+                  <option value="custom">Custom</option>
+                </select>
+              </label>
+              <label>
+                <span>Custom minutes</span>
+                <input id="custom-initial-minutes" type="number" min="1" max="180" value="5" />
+              </label>
+              <label>
+                <span>Increment (sec)</span>
+                <input id="custom-increment-seconds" type="number" min="0" max="60" value="0" />
+              </label>
+              <label>
+                <span>White AI difficulty</span>
+                <select id="white-difficulty"></select>
+              </label>
+              <label>
+                <span>White move time (ms)</span>
+                <input id="white-move-time" type="number" min="100" max="10000" value="900" />
+              </label>
+              <label>
+                <span>White search depth</span>
+                <input id="white-depth" type="number" min="1" max="30" value="14" />
+              </label>
+              <label>
+                <span>Black AI difficulty</span>
+                <select id="black-difficulty"></select>
+              </label>
+              <label>
+                <span>Black move time (ms)</span>
+                <input id="black-move-time" type="number" min="100" max="10000" value="900" />
+              </label>
+              <label>
+                <span>Black search depth</span>
+                <input id="black-depth" type="number" min="1" max="30" value="14" />
+              </label>
+              <label>
+                <span>Autoplay delay (ms)</span>
+                <input id="autoplay-delay" type="number" min="0" max="10000" value="650" />
+              </label>
+              <label class="toggle-field">
+                <span>Analysis mode</span>
+                <input id="analysis-enabled" type="checkbox" />
+              </label>
+            </div>
+            <div class="button-row four-up">
+              <button id="new-game" data-testid="new-game">Start / New</button>
+              <button id="restart-game">Restart</button>
+              <button id="pause-game">Pause</button>
               <button id="flip-board" data-testid="flip-board">Flip view</button>
+            </div>
+            <div class="button-row four-up">
+              <button id="undo-move" data-testid="undo-move">Undo</button>
+              <button id="resign-game">Resign</button>
+              <button id="save-game">Save game</button>
+              <button id="load-game">Load game</button>
             </div>
           </section>
 
@@ -67,6 +153,56 @@
               <p class="eyebrow">Position</p>
               <p id="position-meta" data-testid="position-meta">Classical setup</p>
             </div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-head">
+              <p class="eyebrow">Replay + Notation</p>
+              <p id="replay-status">Live board</p>
+            </div>
+            <div class="button-row four-up">
+              <button id="replay-first">First</button>
+              <button id="replay-prev">Previous</button>
+              <button id="replay-next">Next</button>
+              <button id="replay-last">Last</button>
+            </div>
+            <div class="button-row four-up">
+              <button id="replay-autoplay">Autoplay replay</button>
+              <button id="export-pgn">Export PGN</button>
+              <button id="import-pgn">Import PGN</button>
+              <button id="copy-fen">Copy FEN</button>
+            </div>
+            <label class="stack-field">
+              <span>Load from FEN</span>
+              <textarea id="fen-input" rows="3" placeholder="Paste a FEN string to restore an exact position"></textarea>
+            </label>
+            <button id="load-fen">Load FEN</button>
+          </section>
+
+          <section class="panel">
+            <div class="panel-head">
+              <p class="eyebrow">Analysis</p>
+              <p id="analysis-status">Disabled</p>
+            </div>
+            <div class="analysis-grid">
+              <div>
+                <span class="analysis-label">Evaluation</span>
+                <strong id="analysis-eval">-</strong>
+              </div>
+              <div>
+                <span class="analysis-label">Best move</span>
+                <strong id="analysis-best">-</strong>
+              </div>
+              <div>
+                <span class="analysis-label">Review</span>
+                <strong id="analysis-classification">-</strong>
+              </div>
+              <div>
+                <span class="analysis-label">Engine line</span>
+                <strong id="analysis-line">-</strong>
+              </div>
+            </div>
+            <ol id="analysis-lines" class="line-list"></ol>
           </section>
         </aside>
       </main>

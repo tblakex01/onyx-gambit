@@ -7,10 +7,12 @@ const appRoot = '/Users/nizda/Dev/codex/chess';
 const artifactDir = path.join(appRoot, 'artifacts', 'qa');
 const qaInventory = [
   'Claim: The app launches with a visible full board, readable HUD, and marble/glass styling.',
-  'Claim: Clicking pieces and destination squares performs legal moves and rejects illegal ones.',
-  'Claim: Castling works and animates into the expected king/rook arrangement.',
-  'Claim: En passant works and removes the captured pawn from the board.',
-  'Claim: A game can finish in checkmate with a final winner state.',
+  'Claim: Human vs Human legal move flow, castling, en passant, and checkmate continue to work.',
+  'Claim: Analysis mode evaluates the current board and exposes a best move suggestion.',
+  'Claim: Play against AI triggers a Stockfish reply after the human move settles.',
+  'Claim: AI Play can autoplay multiple turns and pause/resume without race conditions.',
+  'Claim: Replay controls can step away from live play and return to the latest position.',
+  'Claim: Loading a FEN restores the exact board position.',
   'Control: New game resets state.',
   'Control: Undo reverts the latest ply.',
   'Control: Flip view changes the camera without clipping the layout.',
@@ -35,18 +37,19 @@ async function clickSquare(window, square) {
   await window.mouse.click(point.x, point.y);
 }
 
+async function waitForHistory(window, count, timeout = 30_000) {
+  await window.waitForFunction((target) => window.__chessDebug.getState().history.length >= target, count, { timeout });
+}
+
 async function play(window, moves) {
   for (const [from, to] of moves) {
     const before = await getState(window);
     await clickSquare(window, from);
     await window.waitForTimeout(120);
     await clickSquare(window, to);
-    await window.waitForFunction(
-      ({ count }) => window.__chessDebug.getState().history.length > count,
-      { count: before.history.length },
-    );
+    await waitForHistory(window, before.history.length + 1);
+    await window.waitForTimeout(500);
   }
-  await window.waitForTimeout(450);
 }
 
 async function ensureViewportFit(window) {
@@ -74,16 +77,32 @@ async function reset(window) {
   await window.waitForFunction(() => window.__chessDebug.getState().history.length === 0);
 }
 
-async function main() {
-  console.log(qaInventory.join('\n'));
-  await fs.mkdir(artifactDir, { recursive: true });
+async function setMode(window, modeLabel) {
+  await window.getByRole('button', { name: modeLabel }).click();
+}
 
+async function fillValue(window, selector, value) {
+  await window.locator(selector).fill(String(value));
+}
+
+async function launchAppWindow() {
   const app = await electron.launch({ args: ['.'], cwd: appRoot });
   const window = await app.firstWindow();
   await waitForReady(window);
   await ensureViewportFit(window);
+  return { app, window };
+}
+
+async function main() {
+  console.log(qaInventory.join('\n'));
+  await fs.mkdir(artifactDir, { recursive: true });
+
+  let { app, window } = await launchAppWindow();
 
   await window.screenshot({ path: path.join(artifactDir, 'initial-view.png') });
+  await setMode(window, 'Human vs Human');
+  await window.getByTestId('new-game').click();
+  await window.waitForFunction(() => window.__chessDebug.getState().history.length === 0);
 
   await clickSquare(window, 'e2');
   let state = await getState(window);
@@ -115,7 +134,6 @@ async function main() {
     ['g8', 'f6'],
     ['e1', 'g1'],
   ]);
-  state = await getState(window);
   assert.deepEqual(await pieceAt(window, 'g1'), { type: 'k', color: 'w' }, 'white king should land on g1 after castling');
   assert.deepEqual(await pieceAt(window, 'f1'), { type: 'r', color: 'w' }, 'white rook should land on f1 after castling');
   await window.screenshot({ path: path.join(artifactDir, 'castling.png') });
@@ -128,7 +146,6 @@ async function main() {
     ['d7', 'd5'],
     ['e5', 'd6'],
   ]);
-  state = await getState(window);
   assert.deepEqual(await pieceAt(window, 'd6'), { type: 'p', color: 'w' }, 'white pawn should land on d6 after en passant');
   assert.equal(await pieceAt(window, 'd5'), null, 'captured pawn should be removed after en passant');
   await window.screenshot({ path: path.join(artifactDir, 'en-passant.png') });
@@ -143,7 +160,62 @@ async function main() {
   state = await getState(window);
   assert.equal(state.checkmate, true, 'fools mate should reach checkmate');
   assert.match(state.status, /Checkmate\./, 'status line should announce checkmate');
+  await window.locator('#analysis-enabled').check();
+  await window.waitForFunction(
+    () =>
+      document.querySelectorAll('.move-review-badge').length >= 4 &&
+      document.querySelector('#analysis-classification').textContent.trim() !== '-',
+  );
   await window.screenshot({ path: path.join(artifactDir, 'checkmate.png') });
+
+  await reset(window);
+  await window.waitForFunction(() => document.querySelector('#analysis-best').textContent.trim() !== '-');
+  await window.screenshot({ path: path.join(artifactDir, 'analysis.png') });
+
+  await setMode(window, 'Play against AI');
+  await window.selectOption('#human-color', 'w');
+  await fillValue(window, '#black-move-time', 120);
+  await fillValue(window, '#black-depth', 8);
+  await window.getByTestId('new-game').click();
+  await waitForHistory(window, 0);
+  await clickSquare(window, 'e2');
+  await clickSquare(window, 'e4');
+  await waitForHistory(window, 2);
+  state = await getState(window);
+  assert.equal(state.history[1].color, 'b', 'AI should answer with a black move');
+  assert.equal(state.history[1].from.length, 2, 'AI move should include a valid origin square');
+  await window.screenshot({ path: path.join(artifactDir, 'play-against-ai.png') });
+
+  await app.close();
+  ({ app, window } = await launchAppWindow());
+
+  await setMode(window, 'AI Play');
+  await fillValue(window, '#autoplay-delay', 0);
+  await fillValue(window, '#white-move-time', 120);
+  await fillValue(window, '#black-move-time', 120);
+  await fillValue(window, '#white-depth', 8);
+  await fillValue(window, '#black-depth', 8);
+  await window.getByTestId('new-game').click();
+  await waitForHistory(window, 4, 45_000);
+  const beforePause = await getState(window);
+  await window.locator('#pause-game').click();
+  await window.waitForTimeout(500);
+  const paused = await getState(window);
+  assert.equal(paused.history.length, beforePause.history.length, 'pause should stop AI vs AI progression');
+  await window.locator('#pause-game').click();
+  await waitForHistory(window, beforePause.history.length + 1, 45_000);
+  await window.screenshot({ path: path.join(artifactDir, 'ai-play.png') });
+
+  await window.locator('#replay-prev').click();
+  await window.waitForFunction(() => window.__chessDebug.getState().inReplay === true);
+  await window.locator('#replay-last').click();
+  await window.waitForFunction(() => window.__chessDebug.getState().inReplay === false);
+
+  await setMode(window, 'Human vs Human');
+  await window.getByTestId('new-game').click();
+  await window.locator('#fen-input').fill('4k3/8/8/8/8/8/4Q3/4K3 b - - 0 1');
+  await window.locator('#load-fen').click();
+  assert.deepEqual(await pieceAt(window, 'e2'), { type: 'q', color: 'w' }, 'FEN load should restore the white queen on e2');
 
   await app.close();
 }
