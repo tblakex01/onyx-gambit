@@ -58,7 +58,7 @@ async function main() {
   await window.getByRole('button', { name: 'Play against AI' }).click();
   await window.selectOption('#human-color', 'w');
   await window.locator('#black-move-time').fill('120');
-  await window.locator('#black-depth').fill('8');
+  await window.locator('#black-depth').fill('4');
   await window.getByTestId('new-game').click();
   await clickSquare(window, 'e2');
   await clickSquare(window, 'e4');

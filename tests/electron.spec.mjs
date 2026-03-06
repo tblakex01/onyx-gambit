@@ -183,7 +183,7 @@ async function main() {
   await setMode(window, 'Play against AI');
   await window.selectOption('#human-color', 'w');
   await fillValue(window, '#black-move-time', 120);
-  await fillValue(window, '#black-depth', 8);
+  await fillValue(window, '#black-depth', 4);
   await window.getByTestId('new-game').click();
   await waitForHistory(window, 0);
   await clickSquare(window, 'e2');
@@ -201,8 +201,8 @@ async function main() {
   await fillValue(window, '#autoplay-delay', 0);
   await fillValue(window, '#white-move-time', 120);
   await fillValue(window, '#black-move-time', 120);
-  await fillValue(window, '#white-depth', 8);
-  await fillValue(window, '#black-depth', 8);
+  await fillValue(window, '#white-depth', 4);
+  await fillValue(window, '#black-depth', 4);
   await window.getByTestId('new-game').click();
   await waitForHistory(window, 4, 45_000);
   const beforePause = await getState(window);
