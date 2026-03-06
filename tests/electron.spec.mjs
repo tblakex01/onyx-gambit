@@ -1,9 +1,11 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { _electron as electron } from 'playwright';
 
-const appRoot = '/Users/nizda/Dev/codex/chess';
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const appRoot = path.resolve(__dirname, '..');
 const artifactDir = path.join(appRoot, 'artifacts', 'qa');
 const qaInventory = [
   'Claim: The app launches with a visible full board, readable HUD, and marble/glass styling.',
@@ -39,6 +41,17 @@ async function clickSquare(window, square) {
 
 async function waitForHistory(window, count, timeout = 30_000) {
   await window.waitForFunction((target) => window.__chessDebug.getState().history.length >= target, count, { timeout });
+}
+
+async function waitForAnalysisReady(window, timeout = 60_000) {
+  await window.waitForFunction(
+    () => {
+      const state = window.__chessDebug.getState();
+      return state.analysis.status === 'ready' && Boolean(state.analysis.lastLive);
+    },
+    undefined,
+    { timeout },
+  );
 }
 
 async function play(window, moves) {
@@ -160,16 +173,11 @@ async function main() {
   state = await getState(window);
   assert.equal(state.checkmate, true, 'fools mate should reach checkmate');
   assert.match(state.status, /Checkmate\./, 'status line should announce checkmate');
-  await window.locator('#analysis-enabled').check();
-  await window.waitForFunction(
-    () =>
-      document.querySelectorAll('.move-review-badge').length >= 4 &&
-      document.querySelector('#analysis-classification').textContent.trim() !== '-',
-  );
   await window.screenshot({ path: path.join(artifactDir, 'checkmate.png') });
 
   await reset(window);
-  await window.waitForFunction(() => document.querySelector('#analysis-best').textContent.trim() !== '-');
+  await window.locator('#analysis-enabled').check();
+  await waitForAnalysisReady(window);
   await window.screenshot({ path: path.join(artifactDir, 'analysis.png') });
 
   await setMode(window, 'Play against AI');

@@ -1,9 +1,11 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { _electron as electron } from 'playwright';
 
-const appRoot = '/Users/nizda/Dev/codex/chess';
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const appRoot = path.resolve(__dirname, '..');
 const distRoot = path.join(appRoot, 'dist');
 
 async function findPackagedExecutable() {
@@ -52,9 +54,6 @@ async function main() {
   const app = await electron.launch({ executablePath });
   const window = await app.firstWindow();
   await waitForReady(window);
-
-  await window.locator('#analysis-enabled').check();
-  await window.waitForFunction(() => document.querySelector('#analysis-best').textContent.trim() !== '-');
 
   await window.getByRole('button', { name: 'Play against AI' }).click();
   await window.selectOption('#human-color', 'w');

@@ -324,6 +324,8 @@ function updateDebugSurface(snapshot) {
       mode: snapshot.mode,
       aiThinkingColor: snapshot.aiThinkingColor,
       inReplay: snapshot.inReplay,
+      analysis: snapshot.analysis,
+      replayState: snapshot.replayState,
     }),
     getSquareScreenPoint: (square) => scene.getSquareScreenPoint(square),
     pieceAt: (square) => displayChess.get(square) ?? null,
