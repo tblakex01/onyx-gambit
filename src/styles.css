@@ -249,6 +249,45 @@ label,
   background: rgba(255, 255, 255, 0.03);
 }
 
+.analysis-guide {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 8px;
+  padding: 12px 14px;
+  border-radius: 18px;
+  border: 1px solid rgba(142, 215, 255, 0.16);
+  background:
+    linear-gradient(180deg, rgba(142, 215, 255, 0.08), rgba(255, 255, 255, 0.03)),
+    rgba(9, 14, 22, 0.72);
+}
+
+.analysis-guide-title,
+.analysis-context {
+  margin: 0;
+  color: var(--muted);
+}
+
+.analysis-guide-title {
+  color: var(--ice);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.analysis-guide-list {
+  margin: 0;
+  padding-left: 1.15rem;
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+}
+
+.analysis-guide-list li,
+.analysis-context {
+  line-height: 1.45;
+}
+
 select,
 input,
 textarea,
@@ -326,6 +365,10 @@ textarea:disabled {
 
 .move-pill.is-current {
   border-color: rgba(142, 215, 255, 0.45);
+}
+
+.analysis-context {
+  margin-bottom: 12px;
 }
 
 .move-review-badge {

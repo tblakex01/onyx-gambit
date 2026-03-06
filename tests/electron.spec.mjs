@@ -113,13 +113,19 @@ async function main() {
   let { app, window } = await launchAppWindow();
 
   await window.screenshot({ path: path.join(artifactDir, 'initial-view.png') });
+  await window.waitForFunction(() => document.querySelectorAll('#analysis-guide li').length === 3);
   await setMode(window, 'Human vs Human');
   await window.getByTestId('new-game').click();
   await window.waitForFunction(() => window.__chessDebug.getState().history.length === 0);
+  await window.locator('#analysis-enabled').uncheck();
+  await window.locator('#analysis-enabled').check();
+  await waitForAnalysisReady(window);
+  await window.locator('#analysis-enabled').uncheck();
 
   await clickSquare(window, 'e2');
   let state = await getState(window);
   assert.equal(state.selectedSquare, 'e2', 'selecting a piece should expose a selection state');
+  await window.screenshot({ path: path.join(artifactDir, 'selected-white.png') });
   await window.waitForTimeout(120);
   await clickSquare(window, 'e5');
   state = await getState(window);
@@ -136,6 +142,16 @@ async function main() {
 
   await reset(window);
   await window.getByTestId('flip-board').click();
+  await window.waitForTimeout(250);
+  await clickSquare(window, 'e2');
+  await clickSquare(window, 'e4');
+  await waitForHistory(window, 1);
+  await window.waitForTimeout(700);
+  await clickSquare(window, 'e7');
+  state = await getState(window);
+  assert.equal(state.selectedSquare, 'e7', 'flipped camera selection should still expose a black-side selection');
+  await window.screenshot({ path: path.join(artifactDir, 'selected-black.png') });
+  await reset(window);
   await window.waitForTimeout(250);
 
   await play(window, [

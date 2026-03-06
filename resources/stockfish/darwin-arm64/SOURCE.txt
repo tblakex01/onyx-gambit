@@ -1,5 +1,6 @@
 Stockfish release: sf_18
 Asset: stockfish-macos-m1-apple-silicon.tar
+SHA-256: 4d77c4aa3ad9bd1ea8111f2ac5a4620fe7ebf998d6893bf828d49ccd579c8cb0
 Binary URL: https://github.com/official-stockfish/Stockfish/releases/download/sf_18/stockfish-macos-m1-apple-silicon.tar
 Source repository: https://github.com/official-stockfish/Stockfish
 License: GPL-3.0-or-later

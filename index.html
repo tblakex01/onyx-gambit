@@ -121,6 +121,14 @@
                 <span>Analysis mode</span>
                 <input id="analysis-enabled" type="checkbox" />
               </label>
+              <div class="analysis-guide" id="analysis-guide" data-testid="analysis-guide">
+                <p class="analysis-guide-title">Analysis sequence</p>
+                <ol class="analysis-guide-list">
+                  <li>Turn on Analysis mode. It starts immediately, so no restart is required.</li>
+                  <li>Stay on the live board or use Replay to inspect an earlier ply.</li>
+                  <li>Wait for the engine line. Finished games also unlock full move review.</li>
+                </ol>
+              </div>
             </div>
             <div class="button-row four-up">
               <button id="new-game" data-testid="new-game">Start / New</button>
@@ -184,6 +192,9 @@
               <p class="eyebrow">Analysis</p>
               <p id="analysis-status">Disabled</p>
             </div>
+            <p class="analysis-context">
+              Live board shows the current eval. Replay shows the displayed ply. Finished games add review tags.
+            </p>
             <div class="analysis-grid">
               <div>
                 <span class="analysis-label">Evaluation</span>

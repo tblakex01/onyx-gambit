@@ -8,6 +8,11 @@ const SQUARE_SIZE = 1;
 const PIECE_BASE_Y = 0.42;
 const LIGHT_SQUARE = 0xece2d0;
 const DARK_SQUARE = 0x101d2b;
+const HIGHLIGHT_STYLES = {
+  lastMove: { color: 0xc58a4d, opacity: 0.3, height: 0.321, innerRadius: 0.13, outerRadius: 0.2 },
+  legalTarget: { color: 0x2e7a90, opacity: 0.42, height: 0.318, radius: 0.09 },
+  selectedSquare: { color: 0x7d9ab0, opacity: 0.24, height: 0.322, innerRadius: 0.25, outerRadius: 0.38 },
+};
 
 function squareToWorld(square) {
   const file = FILES.indexOf(square[0]);
@@ -50,15 +55,40 @@ function buildMarbleTexture(base, veins) {
   return texture;
 }
 
+function createHighlightMesh(square, style) {
+  const geometry = style.radius
+    ? new THREE.CircleGeometry(style.radius, 36)
+    : new THREE.RingGeometry(style.innerRadius, style.outerRadius, 48);
+  const material = new THREE.MeshStandardMaterial({
+    color: style.color,
+    emissive: new THREE.Color(style.color).multiplyScalar(0.18),
+    emissiveIntensity: 0.12,
+    roughness: 0.76,
+    metalness: 0.04,
+    transparent: true,
+    opacity: style.opacity,
+    depthWrite: false,
+    side: THREE.DoubleSide,
+    polygonOffset: true,
+    polygonOffsetFactor: -2,
+  });
+  const mesh = new THREE.Mesh(geometry, material);
+  mesh.rotation.x = -Math.PI / 2;
+  mesh.position.copy(squareToWorld(square));
+  mesh.position.y = style.height;
+  mesh.renderOrder = 6;
+  return mesh;
+}
+
 function createPieceMaterials() {
   return {
     white: new THREE.MeshPhysicalMaterial({
-      color: 0xe6ded1,
+      color: 0xd8d0c2,
       map: buildMarbleTexture(0xd9c9ad, [108, 82, 63]),
-      roughness: 0.48,
+      roughness: 0.58,
       metalness: 0.04,
-      clearcoat: 0.46,
-      clearcoatRoughness: 0.34,
+      clearcoat: 0.34,
+      clearcoatRoughness: 0.42,
     }),
     black: new THREE.MeshPhysicalMaterial({
       color: 0x132534,
@@ -189,10 +219,10 @@ export class BoardScene {
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFShadowMap;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 0.66;
+    this.renderer.toneMappingExposure = 0.61;
     this.composer = new EffectComposer(this.renderer);
     this.composer.addPass(new RenderPass(this.scene, this.camera));
-    this.composer.addPass(new UnrealBloomPass(new THREE.Vector2(canvas.clientWidth, canvas.clientHeight), 0.05, 0.22, 1.02));
+    this.composer.addPass(new UnrealBloomPass(new THREE.Vector2(canvas.clientWidth, canvas.clientHeight), 0.035, 0.2, 1.06));
     this.timer = new THREE.Timer();
     this.raycaster = new THREE.Raycaster();
     this.pointer = new THREE.Vector2();
@@ -234,8 +264,9 @@ export class BoardScene {
       new THREE.MeshPhysicalMaterial({
         color: 0xf6efe3,
         map: buildMarbleTexture(0xc6b090, [123, 97, 69]),
-        roughness: 0.4,
-        clearcoat: 0.6,
+        roughness: 0.5,
+        clearcoat: 0.42,
+        clearcoatRoughness: 0.38,
       }),
     );
     boardTop.position.y = 0.12;
@@ -243,11 +274,11 @@ export class BoardScene {
     this.scene.add(boardTop);
 
     const lightMaterial = new THREE.MeshPhysicalMaterial({
-      color: 0xe1d5c0,
+      color: 0xd7c9b2,
       map: buildMarbleTexture(0xdcccb2, [118, 95, 68]),
-      roughness: 0.44,
-      clearcoat: 0.42,
-      clearcoatRoughness: 0.3,
+      roughness: 0.56,
+      clearcoat: 0.24,
+      clearcoatRoughness: 0.42,
     });
     const darkMaterial = new THREE.MeshPhysicalMaterial({
       color: DARK_SQUARE,
@@ -281,7 +312,7 @@ export class BoardScene {
 
     this.scene.add(this.pieceLayer);
 
-    const keyLight = new THREE.SpotLight(0xfef4de, 138, 38, Math.PI / 4.8, 0.4, 1.05);
+    const keyLight = new THREE.SpotLight(0xfef4de, 118, 38, Math.PI / 4.8, 0.44, 1.1);
     keyLight.position.set(6.1, 10.4, 6.8);
     keyLight.castShadow = true;
     keyLight.shadow.blurSamples = 25;
@@ -290,22 +321,22 @@ export class BoardScene {
     this.scene.add(keyLight);
     this.scene.add(keyLight.target);
 
-    const counterKey = new THREE.SpotLight(0x9bd8ff, 96, 36, Math.PI / 4.8, 0.48, 1.05);
+    const counterKey = new THREE.SpotLight(0x9bd8ff, 82, 36, Math.PI / 4.8, 0.5, 1.08);
     counterKey.position.set(-6, 9.2, -6.6);
     counterKey.target.position.set(0, 0.85, 0);
     this.scene.add(counterKey);
     this.scene.add(counterKey.target);
 
-    const fillLight = new THREE.PointLight(0x7ad9ff, 32, 24, 2);
+    const fillLight = new THREE.PointLight(0x7ad9ff, 24, 24, 2);
     fillLight.position.set(-4.2, 4.8, 4.8);
     this.scene.add(fillLight);
 
-    const rimLight = new THREE.PointLight(0xffc780, 22, 28, 2);
+    const rimLight = new THREE.PointLight(0xffc780, 16, 28, 2);
     rimLight.position.set(0, 4.2, 8.8);
     this.scene.add(rimLight);
 
-    this.scene.add(new THREE.HemisphereLight(0xadcfe4, 0x061119, 0.62));
-    this.scene.add(new THREE.AmbientLight(0x7da7be, 0.18));
+    this.scene.add(new THREE.HemisphereLight(0xadcfe4, 0x061119, 0.54));
+    this.scene.add(new THREE.AmbientLight(0x7da7be, 0.14));
 
     const mist = new THREE.Mesh(
       new THREE.SphereGeometry(18, 48, 48),
@@ -339,25 +370,24 @@ export class BoardScene {
   }
 
   setHighlights({ selectedSquare, legalTargets, lastMove }) {
-    this.highlights.forEach((mesh) => this.scene.remove(mesh));
+    this.highlights.forEach((mesh) => {
+      this.scene.remove(mesh);
+      mesh.geometry.dispose();
+      mesh.material.dispose();
+    });
     this.highlights = [];
-    const addHighlight = (square, color, height = 0.33, scale = 0.34) => {
-      const mesh = new THREE.Mesh(
-        new THREE.CylinderGeometry(scale, scale, 0.03, 32),
-        new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.85 }),
-      );
-      mesh.position.copy(squareToWorld(square));
-      mesh.position.y = height;
+    const addHighlight = (square, style) => {
+      const mesh = createHighlightMesh(square, style);
       this.highlights.push(mesh);
       this.scene.add(mesh);
     };
 
     if (lastMove) {
-      addHighlight(lastMove.from, 0xffd27d, 0.31, 0.22);
-      addHighlight(lastMove.to, 0xffd27d, 0.31, 0.22);
+      addHighlight(lastMove.from, HIGHLIGHT_STYLES.lastMove);
+      addHighlight(lastMove.to, HIGHLIGHT_STYLES.lastMove);
     }
-    legalTargets.forEach((square) => addHighlight(square, 0x7be8ff));
-    if (selectedSquare) addHighlight(selectedSquare, 0xf8fbff, 0.34, 0.42);
+    legalTargets.forEach((square) => addHighlight(square, HIGHLIGHT_STYLES.legalTarget));
+    if (selectedSquare) addHighlight(selectedSquare, HIGHLIGHT_STYLES.selectedSquare);
   }
 
   renderPieces(board) {
