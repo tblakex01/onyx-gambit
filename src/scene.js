@@ -53,26 +53,28 @@ function buildMarbleTexture(base, veins) {
 function createPieceMaterials() {
   return {
     white: new THREE.MeshPhysicalMaterial({
-      color: 0xf5f1e9,
+      color: 0xe6ded1,
       map: buildMarbleTexture(0xd9c9ad, [108, 82, 63]),
-      roughness: 0.35,
+      roughness: 0.48,
       metalness: 0.04,
-      clearcoat: 0.85,
-      clearcoatRoughness: 0.18,
+      clearcoat: 0.46,
+      clearcoatRoughness: 0.34,
     }),
     black: new THREE.MeshPhysicalMaterial({
-      color: 0x0c1b29,
-      roughness: 0.08,
+      color: 0x132534,
+      roughness: 0.12,
       metalness: 0.02,
       transparent: true,
-      opacity: 0.95,
-      transmission: 0.9,
-      thickness: 1.3,
+      opacity: 0.98,
+      transmission: 0.58,
+      thickness: 0.92,
       ior: 1.3,
-      attenuationDistance: 1.4,
-      attenuationColor: new THREE.Color(0x4fa9c6),
+      attenuationDistance: 2.2,
+      attenuationColor: new THREE.Color(0x66bfdc),
+      emissive: new THREE.Color(0x0a1822),
+      emissiveIntensity: 0.18,
       clearcoat: 1,
-      clearcoatRoughness: 0.05,
+      clearcoatRoughness: 0.08,
     }),
     gold: new THREE.MeshStandardMaterial({
       color: 0xbca070,
@@ -187,10 +189,10 @@ export class BoardScene {
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFShadowMap;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 0.82;
+    this.renderer.toneMappingExposure = 0.66;
     this.composer = new EffectComposer(this.renderer);
     this.composer.addPass(new RenderPass(this.scene, this.camera));
-    this.composer.addPass(new UnrealBloomPass(new THREE.Vector2(canvas.clientWidth, canvas.clientHeight), 0.12, 0.35, 0.94));
+    this.composer.addPass(new UnrealBloomPass(new THREE.Vector2(canvas.clientWidth, canvas.clientHeight), 0.05, 0.22, 1.02));
     this.timer = new THREE.Timer();
     this.raycaster = new THREE.Raycaster();
     this.pointer = new THREE.Vector2();
@@ -241,11 +243,11 @@ export class BoardScene {
     this.scene.add(boardTop);
 
     const lightMaterial = new THREE.MeshPhysicalMaterial({
-      color: LIGHT_SQUARE,
+      color: 0xe1d5c0,
       map: buildMarbleTexture(0xdcccb2, [118, 95, 68]),
-      roughness: 0.32,
-      clearcoat: 0.82,
-      clearcoatRoughness: 0.18,
+      roughness: 0.44,
+      clearcoat: 0.42,
+      clearcoatRoughness: 0.3,
     });
     const darkMaterial = new THREE.MeshPhysicalMaterial({
       color: DARK_SQUARE,
@@ -279,23 +281,31 @@ export class BoardScene {
 
     this.scene.add(this.pieceLayer);
 
-    const keyLight = new THREE.SpotLight(0xfef4de, 900, 40, Math.PI / 6, 0.3, 1.2);
-    keyLight.intensity = 210;
-    keyLight.position.set(5, 10, 6);
+    const keyLight = new THREE.SpotLight(0xfef4de, 138, 38, Math.PI / 4.8, 0.4, 1.05);
+    keyLight.position.set(6.1, 10.4, 6.8);
     keyLight.castShadow = true;
     keyLight.shadow.blurSamples = 25;
     keyLight.shadow.mapSize.set(2048, 2048);
+    keyLight.target.position.set(0, 0.9, 0);
     this.scene.add(keyLight);
+    this.scene.add(keyLight.target);
 
-    const fillLight = new THREE.PointLight(0x6dd0ff, 62, 25, 2);
-    fillLight.position.set(-6, 5.2, -5.8);
+    const counterKey = new THREE.SpotLight(0x9bd8ff, 96, 36, Math.PI / 4.8, 0.48, 1.05);
+    counterKey.position.set(-6, 9.2, -6.6);
+    counterKey.target.position.set(0, 0.85, 0);
+    this.scene.add(counterKey);
+    this.scene.add(counterKey.target);
+
+    const fillLight = new THREE.PointLight(0x7ad9ff, 32, 24, 2);
+    fillLight.position.set(-4.2, 4.8, 4.8);
     this.scene.add(fillLight);
 
-    const rimLight = new THREE.PointLight(0xffc780, 48, 30, 2);
-    rimLight.position.set(0, 4, 9);
+    const rimLight = new THREE.PointLight(0xffc780, 22, 28, 2);
+    rimLight.position.set(0, 4.2, 8.8);
     this.scene.add(rimLight);
 
-    this.scene.add(new THREE.AmbientLight(0x7da7be, 0.38));
+    this.scene.add(new THREE.HemisphereLight(0xadcfe4, 0x061119, 0.62));
+    this.scene.add(new THREE.AmbientLight(0x7da7be, 0.18));
 
     const mist = new THREE.Mesh(
       new THREE.SphereGeometry(18, 48, 48),

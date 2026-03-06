@@ -4,6 +4,7 @@ import readline from 'node:readline';
 import { spawn } from 'node:child_process';
 import { app } from 'electron';
 import { parseBestMoveLine, parseInfoLine, summarizeAnalysis } from './stockfish-parser.js';
+import { normalizeSpawnError, validateStockfishBinary } from './stockfish-binary.js';
 
 function resolveBinaryPath() {
   const root = app.isPackaged ? process.resourcesPath : path.join(app.getAppPath(), 'resources');
@@ -23,6 +24,7 @@ export class StockfishService {
     this.statusListeners = new Set();
     this.phase = 'idle';
     this.error = null;
+    this.binaryPath = null;
   }
 
   onStatus(listener) {
@@ -42,16 +44,23 @@ export class StockfishService {
     this.process.stdin.write(`${command}\n`);
   }
 
+  resetPending(error) {
+    const waiters = this.waiters.splice(0, this.waiters.length);
+    waiters.forEach((waiter) => waiter.reject(error));
+    this.currentJob?.reject(error);
+    this.currentJob = null;
+    if (this.cancelResolve) this.cancelResolve();
+    this.cancelResolve = null;
+    this.cancelPromise = null;
+  }
+
   async ensureReady() {
     if (this.ready && this.process && !this.process.killed) return;
     if (this.initPromise) return this.initPromise;
 
     this.initPromise = (async () => {
-      const binaryPath = resolveBinaryPath();
-      if (!fs.existsSync(binaryPath)) {
-        throw new Error(`Stockfish binary not found at ${binaryPath}. Run npm run prepare:stockfish.`);
-      }
-      fs.chmodSync(binaryPath, 0o755);
+      const binaryPath = validateStockfishBinary(resolveBinaryPath());
+      this.binaryPath = binaryPath;
       this.emitStatus('starting', null);
       this.process = spawn(binaryPath, [], {
         stdio: ['pipe', 'pipe', 'pipe'],
@@ -59,6 +68,14 @@ export class StockfishService {
 
       const lineReader = readline.createInterface({ input: this.process.stdout });
       lineReader.on('line', (line) => this.handleLine(line));
+      this.process.once('error', (error) => {
+        const normalized = normalizeSpawnError(error, binaryPath);
+        this.ready = false;
+        this.process = null;
+        this.initPromise = null;
+        this.resetPending(normalized);
+        this.emitStatus('error', normalized.message);
+      });
       this.process.stderr.on('data', (chunk) => {
         this.error = chunk.toString().trim();
         this.emitStatus('error', this.error);
@@ -67,11 +84,7 @@ export class StockfishService {
         this.ready = false;
         this.process = null;
         this.initPromise = null;
-        this.currentJob?.reject(new Error(`Stockfish exited unexpectedly (${signal ?? code ?? 'unknown'}).`));
-        this.currentJob = null;
-        if (this.cancelResolve) this.cancelResolve();
-        this.cancelResolve = null;
-        this.cancelPromise = null;
+        this.resetPending(new Error(`Stockfish exited unexpectedly (${signal ?? code ?? 'unknown'}).`));
         this.emitStatus('idle', null);
       });
 

@@ -6,6 +6,7 @@
   "type": "module",
   "main": "electron/main.js",
   "scripts": {
+    "postinstall": "npm run prepare:stockfish",
     "dev": "concurrently -k \"vite --host 127.0.0.1 --port 4173\" \"wait-on tcp:4173 && VITE_DEV_SERVER_URL=http://127.0.0.1:4173 electron .\"",
     "start": "npm run dev",
     "prepare:stockfish": "node scripts/fetch-stockfish.mjs",
