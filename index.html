@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0"
+    />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: blob:; connect-src 'self' ws://127.0.0.1:4173 http://127.0.0.1:4173;"
+    />
+    <title>Glass Marble Chess</title>
+    <script type="module" src="/src/main.js"></script>
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="hero">
+        <div>
+          <p class="eyebrow">Electron 3D Strategy Salon</p>
+          <h1>Glass Marble Chess</h1>
+        </div>
+        <p class="hero-copy">
+          A dramatic tabletop of smoked glass, carved stone, and cinematic light.
+        </p>
+      </header>
+
+      <main class="layout">
+        <section class="board-frame">
+          <div class="board-stage" data-testid="board-stage">
+            <canvas id="board-canvas" aria-label="3D chess board"></canvas>
+            <div class="stage-caption">
+              <span>Click a piece, then click a destination square.</span>
+              <span id="selection-label" data-testid="selection-label">No piece selected</span>
+            </div>
+          </div>
+        </section>
+
+        <aside class="sidebar">
+          <section class="panel">
+            <div class="panel-head">
+              <p class="eyebrow">Match State</p>
+              <p id="turn-indicator" data-testid="turn-indicator"></p>
+            </div>
+            <p class="status-line" id="status-line" data-testid="status-line"></p>
+            <div class="button-row">
+              <button id="new-game" data-testid="new-game">New game</button>
+              <button id="undo-move" data-testid="undo-move">Undo</button>
+              <button id="flip-board" data-testid="flip-board">Flip view</button>
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-head">
+              <p class="eyebrow">Move Ledger</p>
+              <p id="move-count" data-testid="move-count">0 plies</p>
+            </div>
+            <ol class="move-list" id="move-list" data-testid="move-list"></ol>
+          </section>
+
+          <section class="panel detail-grid">
+            <div>
+              <p class="eyebrow">Last Move</p>
+              <p id="last-move" data-testid="last-move">Opening position</p>
+            </div>
+            <div>
+              <p class="eyebrow">Position</p>
+              <p id="position-meta" data-testid="position-meta">Classical setup</p>
+            </div>
+          </section>
+        </aside>
+      </main>
+    </div>
+  </body>
+</html>

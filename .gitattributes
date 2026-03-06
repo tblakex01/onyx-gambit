@@ -1,0 +1,2 @@
+resources/stockfish/darwin-arm64/stockfish filter=lfs diff=lfs merge=lfs -text
+resources/stockfish/darwin-x64/stockfish filter=lfs diff=lfs merge=lfs -text
