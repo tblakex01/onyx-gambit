@@ -1,7 +1,7 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('appShell', {
-  name: 'Glass Marble Chess',
+  name: 'Onyx Gambit',
   platform: process.platform,
 });
 

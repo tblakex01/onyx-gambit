@@ -591,8 +591,8 @@ export class GameController {
     const content = JSON.stringify(payload, null, 2);
     await this.storageApi.saveTextFile({
       title: 'Save Chess Game',
-      defaultPath: 'glass-marble-chess.game.json',
-      filters: [{ name: 'Glass Chess Save', extensions: ['json'] }],
+      defaultPath: 'onyx-gambit.game.json',
+      filters: [{ name: 'Onyx Gambit Save', extensions: ['json'] }],
       content,
     });
     await this.persistAutosave();
@@ -647,7 +647,7 @@ export class GameController {
   async exportPgn() {
     await this.storageApi.saveTextFile({
       title: 'Export PGN',
-      defaultPath: 'glass-marble-chess.pgn',
+      defaultPath: 'onyx-gambit.pgn',
       filters: [{ name: 'PGN', extensions: ['pgn'] }],
       content: this.chess.pgn(),
     });

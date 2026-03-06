@@ -1,4 +1,4 @@
-# Glass Marble Chess
+# Onyx Gambit
 
 > A cinematic Electron chess app with a marble board, smoked-glass pieces, direct Three.js rendering, Stockfish-powered AI modes, clocks, replay, and analysis.
 
@@ -43,8 +43,8 @@ npm run package:mac
 
 Packaged builds copy that folder into the app bundle with `electron-builder`:
 
-- `Glass Marble Chess.app/Contents/Resources/stockfish/darwin-arm64/stockfish`
-- `Glass Marble Chess.app/Contents/Resources/stockfish/darwin-x64/stockfish`
+- `Onyx Gambit.app/Contents/Resources/stockfish/darwin-arm64/stockfish`
+- `Onyx Gambit.app/Contents/Resources/stockfish/darwin-x64/stockfish`
 
 The Electron main process resolves the binary from `process.resourcesPath/stockfish/<platform>-<arch>/stockfish` in packaged builds and from `resources/stockfish/<platform>-<arch>/stockfish` in development.
 
@@ -102,6 +102,11 @@ tests/
   integration/          Controller integration tests
   unit/                 Parser, clock, persistence tests
 ```
+
+## CI/CD
+
+- `CI` runs `npm run test:unit` and `npm run test:e2e` on macOS for pushes, pull requests, and manual dispatches.
+- `Release` builds and smoke-tests macOS packages on Intel and Apple Silicon, then publishes `.zip` and `.dmg` assets to a GitHub Release when a `v*` tag is pushed or when manually dispatched with a tag.
 
 ## Known Limitations
 

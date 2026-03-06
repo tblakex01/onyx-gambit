@@ -1,7 +1,8 @@
 {
-  "name": "glass-marble-chess",
+  "name": "onyx-gambit",
   "version": "1.0.0",
-  "description": "An Electron 3D chess experience with marble, glass, and production-grade move validation.",
+  "description": "Onyx Gambit is a cinematic Electron 3D chess experience with marble, glass, and production-grade move validation.",
+  "productName": "Onyx Gambit",
   "type": "module",
   "main": "electron/main.js",
   "scripts": {
@@ -23,6 +24,14 @@
   ],
   "author": "",
   "license": "ISC",
+  "homepage": "https://github.com/tblakex01/onyx-gambit",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tblakex01/onyx-gambit.git"
+  },
+  "bugs": {
+    "url": "https://github.com/tblakex01/onyx-gambit/issues"
+  },
   "dependencies": {
     "@fontsource/cormorant-garamond": "^5.2.11",
     "@fontsource/public-sans": "^5.2.7",
@@ -38,7 +47,7 @@
     "wait-on": "^9.0.4"
   },
   "build": {
-    "appId": "com.nizda.glass-marble-chess",
+    "appId": "com.tblakex01.onyxgambit",
     "asar": true,
     "files": [
       "dist/**",

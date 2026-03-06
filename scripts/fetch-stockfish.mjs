@@ -14,7 +14,7 @@ const targets = [
 
 async function fetchJson(url) {
   const response = await fetch(url, {
-    headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'glass-marble-chess' },
+    headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'onyx-gambit' },
   });
   if (!response.ok) {
     throw new Error(`Failed to fetch ${url}: ${response.status} ${response.statusText}`);
@@ -34,7 +34,7 @@ function pickExecutableName(entries) {
 
 async function downloadFile(url, destination) {
   const response = await fetch(url, {
-    headers: { Accept: 'application/octet-stream', 'User-Agent': 'glass-marble-chess' },
+    headers: { Accept: 'application/octet-stream', 'User-Agent': 'onyx-gambit' },
   });
   if (!response.ok) throw new Error(`Failed to download ${url}: ${response.status} ${response.statusText}`);
   const buffer = Buffer.from(await response.arrayBuffer());

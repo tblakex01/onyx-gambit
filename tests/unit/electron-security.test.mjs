@@ -44,7 +44,7 @@ test('engine payload validation rejects control characters in fen input', () => 
 test('save payload validation normalizes filters and enforces extension format', () => {
   const payload = validateSaveTextPayload({
     title: 'Export PGN',
-    defaultPath: 'glass-marble-chess.pgn',
+    defaultPath: 'onyx-gambit.pgn',
     filters: [{ name: 'PGN', extensions: ['PGN', 'txt'] }],
     content: '1. e4 e5',
   });

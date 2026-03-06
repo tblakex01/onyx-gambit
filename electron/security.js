@@ -97,7 +97,7 @@ export function validateSaveTextPayload(payload) {
     title: assertText(normalized.title, 'title', { maxLength: MAX_DIALOG_TITLE_LENGTH }),
     defaultPath: assertOptionalText(normalized.defaultPath, 'defaultPath', {
       maxLength: MAX_DEFAULT_PATH_LENGTH,
-    }) ?? 'glass-marble-chess.txt',
+    }) ?? 'onyx-gambit.txt',
     filters: normalizeFilters(normalized.filters),
     content: assertText(normalized.content, 'content', {
       maxLength: MAX_TEXT_FILE_LENGTH,
