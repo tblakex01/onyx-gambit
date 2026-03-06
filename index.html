@@ -27,28 +27,28 @@
 
       <main class="layout">
         <section class="board-frame">
+          <div class="board-hud">
+            <div class="clock-card" data-testid="black-clock">
+              <span class="clock-label">Black</span>
+              <strong id="black-clock">05:00</strong>
+            </div>
+            <div class="stage-status">
+              <span id="turn-indicator" data-testid="turn-indicator"></span>
+              <span id="engine-status"></span>
+            </div>
+            <div class="clock-card" data-testid="white-clock">
+              <span class="clock-label">White</span>
+              <strong id="white-clock">05:00</strong>
+            </div>
+          </div>
+
           <div class="board-stage" data-testid="board-stage">
             <canvas id="board-canvas" aria-label="3D chess board"></canvas>
+          </div>
 
-            <div class="stage-topbar">
-              <div class="clock-card" data-testid="black-clock">
-                <span class="clock-label">Black</span>
-                <strong id="black-clock">05:00</strong>
-              </div>
-              <div class="stage-status">
-                <span id="turn-indicator" data-testid="turn-indicator"></span>
-                <span id="engine-status"></span>
-              </div>
-              <div class="clock-card" data-testid="white-clock">
-                <span class="clock-label">White</span>
-                <strong id="white-clock">05:00</strong>
-              </div>
-            </div>
-
-            <div class="stage-caption">
-              <span id="selection-label" data-testid="selection-label">No piece selected</span>
-              <span id="thinking-indicator">Waiting for input</span>
-            </div>
+          <div class="board-caption">
+            <span id="selection-label" data-testid="selection-label">No piece selected</span>
+            <span id="thinking-indicator">Waiting for input</span>
           </div>
         </section>
 

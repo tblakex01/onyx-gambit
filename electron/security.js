@@ -1,42 +1,23 @@
+import {
+  APP_PROTOCOL,
+  APP_PROTOCOL_HOST,
+  MAX_AUTOSAVE_BYTES,
+  MAX_CLIPBOARD_TEXT_LENGTH,
+  MAX_DEFAULT_PATH_LENGTH,
+  MAX_DIALOG_TITLE_LENGTH,
+  MAX_FILTER_COUNT,
+  MAX_FILTER_EXTENSION_COUNT,
+  MAX_TEXT_FILE_BYTES,
+  assertFileSize,
+  assertInteger,
+  assertObject,
+  assertOptionalText,
+  assertText,
+  normalizeFenText,
+  normalizeLoopbackDevServerUrl,
+} from '../src/security-policy.js';
+
 const SAFE_EXTERNAL_PROTOCOLS = new Set(['https:', 'mailto:']);
-const MAX_DIALOG_TITLE_LENGTH = 120;
-const MAX_DEFAULT_PATH_LENGTH = 240;
-const MAX_TEXT_FILE_LENGTH = 1_000_000;
-const MAX_AUTOSAVE_LENGTH = 1_000_000;
-const MAX_CLIPBOARD_TEXT_LENGTH = 10_000;
-const MAX_FILTER_COUNT = 6;
-const MAX_FILTER_EXTENSION_COUNT = 8;
-const MAX_FEN_LENGTH = 120;
-
-function assertObject(value, label) {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) {
-    throw new TypeError(`${label} must be an object.`);
-  }
-  return value;
-}
-
-function assertText(value, label, { maxLength, allowEmpty = false } = {}) {
-  if (typeof value !== 'string') throw new TypeError(`${label} must be a string.`);
-  const normalized = value.trim();
-  if (!allowEmpty && !normalized) throw new TypeError(`${label} is required.`);
-  if (normalized.includes('\0')) throw new TypeError(`${label} must not contain null bytes.`);
-  if (maxLength && normalized.length > maxLength) throw new TypeError(`${label} must be <= ${maxLength} characters.`);
-  return normalized;
-}
-
-function assertOptionalText(value, label, options = {}) {
-  if (value == null || value === '') return null;
-  return assertText(value, label, options);
-}
-
-function assertInteger(value, label, { min, max, optional = false } = {}) {
-  if (value == null && optional) return null;
-  const numeric = Number(value);
-  if (!Number.isInteger(numeric)) throw new TypeError(`${label} must be an integer.`);
-  if (min != null && numeric < min) throw new RangeError(`${label} must be >= ${min}.`);
-  if (max != null && numeric > max) throw new RangeError(`${label} must be <= ${max}.`);
-  return numeric;
-}
 
 function normalizeFilters(filters) {
   if (filters == null) return [];
@@ -65,12 +46,6 @@ function normalizeFilters(filters) {
   });
 }
 
-function normalizeFen(value) {
-  const fen = assertText(value, 'fen', { maxLength: MAX_FEN_LENGTH });
-  if (/[\r\n]/.test(fen)) throw new TypeError('fen must not contain line breaks.');
-  return fen;
-}
-
 export function isSafeExternalUrl(candidate) {
   try {
     const url = new URL(candidate);
@@ -84,11 +59,45 @@ export function isAllowedRendererNavigation(candidate, devServerUrl) {
   if (!devServerUrl) return false;
   try {
     const target = new URL(candidate);
-    const allowed = new URL(devServerUrl);
+    const allowed = new URL(normalizeLoopbackDevServerUrl(devServerUrl));
     return target.protocol === allowed.protocol && target.host === allowed.host;
   } catch {
     return false;
   }
+}
+
+export function isTrustedRendererUrl(candidate, devServerUrl) {
+  if (isAllowedRendererNavigation(candidate, devServerUrl)) return true;
+  try {
+    const url = new URL(candidate);
+    return url.protocol === `${APP_PROTOCOL}:` && url.host === APP_PROTOCOL_HOST;
+  } catch {
+    return false;
+  }
+}
+
+export function assertTrustedIpcSender(event, mainWindow, devServerUrl) {
+  if (!mainWindow || mainWindow.isDestroyed()) {
+    throw new Error('Blocked IPC because the main window is unavailable.');
+  }
+  if (event.sender !== mainWindow.webContents || event.senderFrame !== mainWindow.webContents.mainFrame) {
+    throw new Error('Blocked IPC from an untrusted sender frame.');
+  }
+  if (!isTrustedRendererUrl(event.senderFrame.url, devServerUrl)) {
+    throw new Error(`Blocked IPC from unexpected origin: ${event.senderFrame.url}`);
+  }
+}
+
+export function validateOpenedTextFileSize(size) {
+  return assertFileSize(size, 'opened file', MAX_TEXT_FILE_BYTES);
+}
+
+export function validateAutosaveFileSize(size) {
+  return assertFileSize(size, 'autosave file', MAX_AUTOSAVE_BYTES);
+}
+
+export function validateDevServerUrl(candidate) {
+  return normalizeLoopbackDevServerUrl(candidate);
 }
 
 export function validateSaveTextPayload(payload) {
@@ -100,7 +109,7 @@ export function validateSaveTextPayload(payload) {
     }) ?? 'onyx-gambit.txt',
     filters: normalizeFilters(normalized.filters),
     content: assertText(normalized.content, 'content', {
-      maxLength: MAX_TEXT_FILE_LENGTH,
+      maxLength: MAX_TEXT_FILE_BYTES,
       allowEmpty: true,
     }),
   };
@@ -123,7 +132,7 @@ export function validateClipboardText(text) {
 
 export function validateAutosaveContent(content) {
   return assertText(content, 'autosave content', {
-    maxLength: MAX_AUTOSAVE_LENGTH,
+    maxLength: MAX_AUTOSAVE_BYTES,
     allowEmpty: true,
   });
 }
@@ -131,7 +140,7 @@ export function validateAutosaveContent(content) {
 export function validateEnginePayload(payload, { allowDepth = true, defaultMultiPv = 1 } = {}) {
   const normalized = assertObject(payload, 'engine payload');
   return {
-    fen: normalizeFen(normalized.fen),
+    fen: normalizeFenText(normalized.fen),
     skillLevel: assertInteger(normalized.skillLevel ?? 10, 'skillLevel', { min: 0, max: 20 }),
     moveTimeMs: assertInteger(normalized.moveTimeMs ?? 1_000, 'moveTimeMs', { min: 100, max: 60_000 }),
     depth: allowDepth ? assertInteger(normalized.depth, 'depth', { min: 1, max: 30, optional: true }) : null,

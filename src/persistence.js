@@ -1,10 +1,25 @@
 import { Chess } from 'chess.js';
 import { SAVE_FILE_VERSION, cloneJson, createAiConfig, createClockConfig, createDefaultPlayers, GAME_MODES } from './game-types.js';
 import { normalizeReviewAnnotations } from './review.js';
+import { MAX_TEXT_FILE_LENGTH, assertInteger, assertText, normalizeFenText, normalizePgnText } from './security-policy.js';
+
+const VALID_GAME_MODES = new Set(Object.values(GAME_MODES));
+const MAX_REPLAY_DELAY_MS = 10_000;
+
+function normalizeGameMode(value) {
+  if (!VALID_GAME_MODES.has(value)) {
+    throw new Error('Save file has an invalid game mode.');
+  }
+  return value;
+}
+
+function normalizeReplayDelay(value) {
+  return assertInteger(value ?? 900, 'replay delay', { min: 0, max: MAX_REPLAY_DELAY_MS });
+}
 
 export function createChessFromFen(fen) {
   const chess = new Chess();
-  if (fen) chess.load(fen);
+  if (fen) chess.load(normalizeFenText(fen));
   return chess;
 }
 
@@ -40,7 +55,7 @@ export function createReplayFramesFromHistory(verboseHistory = []) {
 
 export function buildReplayFramesFromPgn(pgn) {
   const loaded = new Chess();
-  loaded.loadPgn(pgn);
+  loaded.loadPgn(normalizePgnText(pgn));
   return createReplayFramesFromHistory(loaded.history({ verbose: true }));
 }
 
@@ -75,7 +90,9 @@ function normalizePlayers(input, mode = GAME_MODES.HUMAN) {
 }
 
 export function deserializeSavedGame(raw) {
-  const payload = typeof raw === 'string' ? JSON.parse(raw) : raw;
+  const payload = typeof raw === 'string' ? JSON.parse(assertText(raw, 'save payload', {
+    maxLength: MAX_TEXT_FILE_LENGTH,
+  })) : raw;
   if (!payload || typeof payload !== 'object') {
     throw new Error('Invalid save payload.');
   }
@@ -85,19 +102,22 @@ export function deserializeSavedGame(raw) {
   }
 
   const chess = new Chess();
-  chess.loadPgn(payload.pgn);
-  if (payload.fen !== chess.fen()) {
+  const mode = normalizeGameMode(payload.mode);
+  const fen = normalizeFenText(payload.fen);
+  const pgn = normalizePgnText(payload.pgn);
+  chess.loadPgn(pgn);
+  if (fen !== chess.fen()) {
     throw new Error('Save file FEN does not match PGN history.');
   }
 
   return {
     version: payload.version ?? SAVE_FILE_VERSION,
     savedAt: payload.savedAt ?? new Date().toISOString(),
-    fen: payload.fen,
-    pgn: payload.pgn,
+    fen,
+    pgn,
     result: payload.result ?? null,
-    mode: payload.mode,
-    players: normalizePlayers(payload.players, payload.mode),
+    mode,
+    players: normalizePlayers(payload.players, mode),
     clockConfig: createClockConfig(payload.clockConfig),
     clockState: {
       whiteMs: Number(payload.clockState?.whiteMs ?? payload.clockConfig?.initialMs ?? 0),
@@ -111,7 +131,7 @@ export function deserializeSavedGame(raw) {
       active: Boolean(payload.replayState?.active),
       index: Number(payload.replayState?.index ?? 0),
       autoplay: Boolean(payload.replayState?.autoplay),
-      delayMs: Number(payload.replayState?.delayMs ?? 900),
+      delayMs: normalizeReplayDelay(payload.replayState?.delayMs),
     },
     analysis: {
       enabled: Boolean(payload.analysis?.enabled),
@@ -126,7 +146,7 @@ export function deserializeSavedGame(raw) {
 
 export function parsePgnText(pgnText) {
   const chess = new Chess();
-  chess.loadPgn(pgnText, { strict: false });
+  chess.loadPgn(normalizePgnText(pgnText), { strict: false });
   return {
     chess,
     pgn: chess.pgn(),
@@ -136,7 +156,7 @@ export function parsePgnText(pgnText) {
 }
 
 export function parseFenText(fenText) {
-  const chess = createChessFromFen(fenText.trim());
+  const chess = createChessFromFen(fenText);
   return {
     chess,
     fen: chess.fen(),

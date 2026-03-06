@@ -34,6 +34,15 @@ test('pgn and fen helpers restore exact positions', () => {
   assert.equal(frames.at(-1).fen, parsedPgn.fen);
 });
 
+test('fen helper rejects multiline or oversized input', () => {
+  assert.throws(() => parseFenText('8/8/8/8/8/8/8/8 w - - 0 1\nstop'), /line breaks/);
+  assert.throws(() => parseFenText('x'.repeat(121)), /<= 120 characters/);
+});
+
+test('pgn helper rejects oversized input', () => {
+  assert.throws(() => parsePgnText('1. e4 '.repeat(200_001)), /<= 1000000 characters/);
+});
+
 test('saved games round-trip through serialization', () => {
   const chess = new Chess();
   chess.move('e4');

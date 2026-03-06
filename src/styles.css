@@ -41,9 +41,9 @@ body::before {
 
 .app-shell {
   min-height: 100vh;
-  padding: 28px;
+  padding: 22px;
   display: grid;
-  gap: 22px;
+  gap: 18px;
 }
 
 .hero,
@@ -56,10 +56,10 @@ body::before {
 }
 
 .hero {
-  padding: 22px 26px;
+  padding: 18px 24px;
   display: flex;
   justify-content: space-between;
-  align-items: end;
+  align-items: center;
   gap: 24px;
   border-radius: 28px;
 }
@@ -74,7 +74,7 @@ body::before {
 
 h1 {
   margin: 0;
-  font: 700 clamp(2.5rem, 5vw, 4.4rem) / 0.95 'Cormorant Garamond', serif;
+  font: 700 clamp(2.35rem, 4.7vw, 4rem) / 0.95 'Cormorant Garamond', serif;
 }
 
 .hero-copy,
@@ -91,21 +91,23 @@ h1 {
 
 .layout {
   display: grid;
-  grid-template-columns: minmax(0, 1.7fr) minmax(390px, 0.9fr);
+  grid-template-columns: minmax(0, 1.95fr) minmax(360px, 0.82fr);
   gap: 22px;
   align-items: start;
 }
 
 .board-frame {
   border-radius: 34px;
-  padding: 22px;
+  padding: 16px;
   position: sticky;
-  top: 28px;
+  top: 22px;
+  display: grid;
+  gap: 12px;
 }
 
 .board-stage {
   position: relative;
-  min-height: clamp(390px, calc(100vh - 290px), 700px);
+  height: clamp(400px, calc(100vh - 360px), 540px);
   border-radius: 24px;
   overflow: hidden;
   background:
@@ -119,27 +121,21 @@ h1 {
   display: block;
 }
 
-.stage-topbar,
-.stage-caption {
-  position: absolute;
-  left: 18px;
-  right: 18px;
+.board-hud,
+.board-caption {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 12px 16px;
-  border-radius: 18px;
+  padding: 12px 14px;
+  border-radius: 20px;
   background: rgba(7, 10, 16, 0.72);
   border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
-.stage-topbar {
-  top: 18px;
-}
-
-.stage-caption {
-  bottom: 18px;
+.board-hud {
+  min-height: 78px;
 }
 
 .clock-card,
@@ -149,7 +145,7 @@ h1 {
 }
 
 .clock-card {
-  min-width: 128px;
+  min-width: 136px;
   padding: 8px 12px;
   border-radius: 14px;
   background: rgba(255, 255, 255, 0.03);
@@ -166,11 +162,24 @@ label span {
 
 .clock-card strong,
 .stage-status span:first-child {
-  font-size: 1.2rem;
+  font-size: 1.18rem;
 }
 
 .stage-status {
   text-align: center;
+  justify-items: center;
+  flex: 1;
+}
+
+.board-caption {
+  min-height: 46px;
+}
+
+.board-caption span:first-child,
+.board-caption span:last-child {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.5rem;
 }
 
 .sidebar {
@@ -375,8 +384,8 @@ textarea:disabled {
 
 @media (max-width: 760px) {
   .hero,
-  .stage-topbar,
-  .stage-caption,
+  .board-hud,
+  .board-caption,
   .panel-head {
     flex-direction: column;
     align-items: stretch;
@@ -391,6 +400,10 @@ textarea:disabled {
   }
 
   .board-stage {
-    min-height: 58vh;
+    height: 52vh;
+  }
+
+  .clock-card {
+    min-width: 0;
   }
 }
