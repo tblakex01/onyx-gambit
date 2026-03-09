@@ -19,7 +19,7 @@ npm install
 npm run dev
 ```
 
-On first install, `postinstall` runs `npm run prepare:stockfish`, which downloads the official bundled Stockfish binaries used by both development and packaged macOS builds.
+On first install, `postinstall` runs `npm run prepare:stockfish`, which validates the pinned bundled Stockfish binaries already committed under `resources/stockfish`. If a required asset is missing or invalid, the script re-downloads the pinned official release asset automatically.
 
 Useful scripts:
 
@@ -36,7 +36,7 @@ npm run package:mac
 
 ## Stockfish Packaging On macOS
 
-`npm run prepare:stockfish` downloads the latest official Stockfish release assets for:
+`npm run prepare:stockfish` maintains the pinned Stockfish 18 release assets for:
 
 - `resources/stockfish/darwin-arm64/stockfish`
 - `resources/stockfish/darwin-x64/stockfish`
@@ -47,6 +47,12 @@ Packaged builds copy that folder into the app bundle with `electron-builder`:
 - `Onyx Gambit.app/Contents/Resources/stockfish/darwin-x64/stockfish`
 
 The Electron main process resolves the binary from `process.resourcesPath/stockfish/<platform>-<arch>/stockfish` in packaged builds and from `resources/stockfish/<platform>-<arch>/stockfish` in development.
+
+To explicitly refresh the pinned assets even when the local bundle is already valid, run:
+
+```bash
+npm run prepare:stockfish -- --force
+```
 
 ## AI, Analysis, And Replay
 
