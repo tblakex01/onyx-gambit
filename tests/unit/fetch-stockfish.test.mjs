@@ -8,8 +8,19 @@ import {
   getSourceText,
   hasPreparedBundle,
   hasPreparedTarget,
+  main,
   pickExecutableName,
 } from '../../scripts/fetch-stockfish.mjs';
+
+const LICENSE_TEXT = 'GPL-3.0-or-later - https://github.com/official-stockfish/Stockfish/blob/master/Copying.txt\n';
+
+async function writePreparedTarget(root, target) {
+  const destinationDir = path.join(root, target.folder);
+  await fs.mkdir(destinationDir, { recursive: true });
+  await fs.writeFile(path.join(destinationDir, 'stockfish'), Buffer.from([0xcf, 0xfa, 0xed, 0xfe, 0x00, 0x00]));
+  await fs.writeFile(path.join(destinationDir, 'SOURCE.txt'), getSourceText(target), 'utf8');
+  await fs.writeFile(path.join(destinationDir, 'LICENSE.txt'), LICENSE_TEXT, 'utf8');
+}
 
 test('pickExecutableName ignores unsafe or non-binary archive entries', () => {
   assert.equal(
@@ -45,14 +56,7 @@ test('hasPreparedTarget validates the local bundled binary and provenance files'
     sha256: '4d77c4aa3ad9bd1ea8111f2ac5a4620fe7ebf998d6893bf828d49ccd579c8cb0',
   };
   const destinationDir = path.join(tempRoot, target.folder);
-  await fs.mkdir(destinationDir, { recursive: true });
-  await fs.writeFile(path.join(destinationDir, 'stockfish'), Buffer.from([0xcf, 0xfa, 0xed, 0xfe, 0x00, 0x00]));
-  await fs.writeFile(path.join(destinationDir, 'SOURCE.txt'), getSourceText(target), 'utf8');
-  await fs.writeFile(
-    path.join(destinationDir, 'LICENSE.txt'),
-    'GPL-3.0-or-later - https://github.com/official-stockfish/Stockfish/blob/master/Copying.txt\n',
-    'utf8',
-  );
+  await writePreparedTarget(tempRoot, target);
 
   await assert.doesNotReject(() => hasPreparedTarget(target, tempRoot));
   assert.equal(await hasPreparedTarget(target, tempRoot), true);
@@ -76,19 +80,43 @@ test('hasPreparedBundle requires every pinned target to be valid', async () => {
   };
 
   for (const target of [arm64Target, x64Target]) {
-    const destinationDir = path.join(tempRoot, target.folder);
-    await fs.mkdir(destinationDir, { recursive: true });
-    await fs.writeFile(path.join(destinationDir, 'stockfish'), Buffer.from([0xcf, 0xfa, 0xed, 0xfe, 0x00, 0x00]));
-    await fs.writeFile(path.join(destinationDir, 'SOURCE.txt'), getSourceText(target), 'utf8');
-    await fs.writeFile(
-      path.join(destinationDir, 'LICENSE.txt'),
-      'GPL-3.0-or-later - https://github.com/official-stockfish/Stockfish/blob/master/Copying.txt\n',
-      'utf8',
-    );
+    await writePreparedTarget(tempRoot, target);
   }
 
   assert.equal(await hasPreparedBundle(tempRoot), true);
   await fs.rm(path.join(tempRoot, x64Target.folder, 'LICENSE.txt'), { force: true });
   assert.equal(await hasPreparedBundle(tempRoot), false);
   await fs.rm(tempRoot, { recursive: true, force: true });
+});
+
+test('main skips network refresh when every pinned target is already prepared', async () => {
+  const tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'stockfish-main-'));
+  const targets = [
+    {
+      folder: 'darwin-arm64',
+      assetName: 'stockfish-macos-m1-apple-silicon.tar',
+      sha256: '4d77c4aa3ad9bd1ea8111f2ac5a4620fe7ebf998d6893bf828d49ccd579c8cb0',
+    },
+    {
+      folder: 'darwin-x64',
+      assetName: 'stockfish-macos-x86-64.tar',
+      sha256: 'e7d7a2bca13915419d41ac6cb8cedb123dd2ba1c39a22c574df7a2aa3f526592',
+    },
+  ];
+
+  for (const target of targets) {
+    await writePreparedTarget(tempRoot, target);
+  }
+
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => {
+    throw new Error('network should not be used');
+  };
+
+  try {
+    await assert.doesNotReject(() => main({ outputRoot: tempRoot, force: false }));
+  } finally {
+    globalThis.fetch = originalFetch;
+    await fs.rm(tempRoot, { recursive: true, force: true });
+  }
 });
