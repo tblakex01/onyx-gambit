@@ -464,7 +464,13 @@ export class BoardScene {
   }
 
   getSquareScreenPoint(square) {
-    const point = squareToWorld(square).add(new THREE.Vector3(0, 0.35, 0)).project(this.camera);
+    this.camera.updateProjectionMatrix();
+    this.camera.updateMatrixWorld();
+    const squareMesh = this.squareMeshes.get(square);
+    const worldPoint = squareMesh
+      ? squareMesh.getWorldPosition(new THREE.Vector3()).add(new THREE.Vector3(0, 0.05, 0))
+      : squareToWorld(square).add(new THREE.Vector3(0, 0.33, 0));
+    const point = worldPoint.project(this.camera);
     const rect = this.canvas.getBoundingClientRect();
     return {
       x: rect.left + ((point.x + 1) / 2) * rect.width,
