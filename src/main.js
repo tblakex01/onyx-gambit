@@ -323,6 +323,7 @@ function updateDebugSurface(snapshot) {
       checkmate: displayChess.isCheckmate(),
       mode: snapshot.mode,
       aiThinkingColor: snapshot.aiThinkingColor,
+      pendingBoardSettle: snapshot.pendingBoardSettle,
       inReplay: snapshot.inReplay,
       analysis: snapshot.analysis,
       replayState: snapshot.replayState,

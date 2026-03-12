@@ -36,7 +36,38 @@ async function pieceAt(window, square) {
 
 async function clickSquare(window, square) {
   const point = await window.evaluate((value) => window.__chessDebug.getSquareScreenPoint(value), square);
-  await window.mouse.click(point.x, point.y);
+  const canvas = window.locator('#board-canvas');
+  const box = await canvas.boundingBox();
+  assert.ok(box, 'board canvas should be visible before clicking squares');
+  await canvas.click({
+    force: true,
+    position: {
+      x: Math.round(point.x - box.x),
+      y: Math.round(point.y - box.y),
+    },
+  });
+}
+
+async function waitForBoardInteractive(window, timeout = 30_000) {
+  await window.waitForFunction(() => {
+    const state = window.__chessDebug.getState();
+    return window.__chessDebug.ready && !state.pendingBoardSettle && !state.aiThinkingColor && !state.inReplay;
+  }, undefined, { timeout });
+}
+
+async function selectSquare(window, square, attempts = 3) {
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    await waitForBoardInteractive(window);
+    await clickSquare(window, square);
+    const selected = await window
+      .waitForFunction((target) => window.__chessDebug.getState().selectedSquare === target, square, { timeout: 500 })
+      .then(() => true)
+      .catch(() => false);
+    if (selected) return;
+    await window.waitForTimeout(120);
+  }
+  const state = await getState(window);
+  assert.equal(state.selectedSquare, square, `expected ${square} to be selected after ${attempts} attempts`);
 }
 
 async function waitForHistory(window, count, timeout = 30_000) {
@@ -57,8 +88,7 @@ async function waitForAnalysisReady(window, timeout = 60_000) {
 async function play(window, moves) {
   for (const [from, to] of moves) {
     const before = await getState(window);
-    await clickSquare(window, from);
-    await window.waitForTimeout(120);
+    await selectSquare(window, from);
     await clickSquare(window, to);
     await waitForHistory(window, before.history.length + 1);
     await window.waitForTimeout(500);
@@ -110,138 +140,144 @@ async function main() {
   console.log(qaInventory.join('\n'));
   await fs.mkdir(artifactDir, { recursive: true });
 
-  let { app, window } = await launchAppWindow();
+  let app;
+  let window;
+  try {
+    ({ app, window } = await launchAppWindow());
 
-  await window.screenshot({ path: path.join(artifactDir, 'initial-view.png') });
-  await window.waitForFunction(() => document.querySelectorAll('#analysis-guide li').length === 3);
-  await setMode(window, 'Human vs Human');
-  await window.getByTestId('new-game').click();
-  await window.waitForFunction(() => window.__chessDebug.getState().history.length === 0);
-  await window.locator('#analysis-enabled').uncheck();
-  await window.locator('#analysis-enabled').check();
-  await waitForAnalysisReady(window);
-  await window.locator('#analysis-enabled').uncheck();
+    await window.screenshot({ path: path.join(artifactDir, 'initial-view.png') });
+    await window.waitForFunction(() => document.querySelectorAll('#analysis-guide li').length === 3);
+    await setMode(window, 'Human vs Human');
+    await window.getByTestId('new-game').click();
+    await window.waitForFunction(() => window.__chessDebug.getState().history.length === 0);
+    await window.locator('#analysis-enabled').uncheck();
+    await window.locator('#analysis-enabled').check();
+    await waitForAnalysisReady(window);
+    await window.locator('#analysis-enabled').uncheck();
 
-  await clickSquare(window, 'e2');
-  let state = await getState(window);
-  assert.equal(state.selectedSquare, 'e2', 'selecting a piece should expose a selection state');
-  await window.screenshot({ path: path.join(artifactDir, 'selected-white.png') });
-  await window.waitForTimeout(120);
-  await clickSquare(window, 'e5');
-  state = await getState(window);
-  assert.equal(state.history.length, 0, 'illegal move target should not change history');
-  assert.equal(state.selectedSquare, null, 'illegal target should clear selection');
+    await selectSquare(window, 'e2');
+    let state = await getState(window);
+    assert.equal(state.selectedSquare, 'e2', 'selecting a piece should expose a selection state');
+    await window.screenshot({ path: path.join(artifactDir, 'selected-white.png') });
+    await window.waitForTimeout(120);
+    await clickSquare(window, 'e5');
+    state = await getState(window);
+    assert.equal(state.history.length, 0, 'illegal move target should not change history');
+    assert.equal(state.selectedSquare, null, 'illegal target should clear selection');
 
-  await play(window, [
-    ['e2', 'e4'],
-    ['e7', 'e5'],
-  ]);
-  await window.getByTestId('undo-move').click();
-  state = await getState(window);
-  assert.equal(state.history.length, 1, 'undo should revert the latest ply');
+    await play(window, [
+      ['e2', 'e4'],
+      ['e7', 'e5'],
+    ]);
+    await window.getByTestId('undo-move').click();
+    state = await getState(window);
+    assert.equal(state.history.length, 1, 'undo should revert the latest ply');
 
-  await reset(window);
-  await window.getByTestId('flip-board').click();
-  await window.waitForTimeout(250);
-  await clickSquare(window, 'e2');
-  await clickSquare(window, 'e4');
-  await waitForHistory(window, 1);
-  await window.waitForTimeout(700);
-  await clickSquare(window, 'e7');
-  state = await getState(window);
-  assert.equal(state.selectedSquare, 'e7', 'flipped camera selection should still expose a black-side selection');
-  await window.screenshot({ path: path.join(artifactDir, 'selected-black.png') });
-  await reset(window);
-  await window.waitForTimeout(250);
+    await reset(window);
+    await window.getByTestId('flip-board').click();
+    await window.waitForTimeout(250);
+    await selectSquare(window, 'e2');
+    await clickSquare(window, 'e4');
+    await waitForHistory(window, 1);
+    await window.waitForTimeout(700);
+    await selectSquare(window, 'e7');
+    state = await getState(window);
+    assert.equal(state.selectedSquare, 'e7', 'flipped camera selection should still expose a black-side selection');
+    await window.screenshot({ path: path.join(artifactDir, 'selected-black.png') });
+    await reset(window);
+    await window.waitForTimeout(250);
 
-  await play(window, [
-    ['e2', 'e4'],
-    ['e7', 'e5'],
-    ['g1', 'f3'],
-    ['b8', 'c6'],
-    ['f1', 'c4'],
-    ['g8', 'f6'],
-    ['e1', 'g1'],
-  ]);
-  assert.deepEqual(await pieceAt(window, 'g1'), { type: 'k', color: 'w' }, 'white king should land on g1 after castling');
-  assert.deepEqual(await pieceAt(window, 'f1'), { type: 'r', color: 'w' }, 'white rook should land on f1 after castling');
-  await window.screenshot({ path: path.join(artifactDir, 'castling.png') });
+    await play(window, [
+      ['e2', 'e4'],
+      ['e7', 'e5'],
+      ['g1', 'f3'],
+      ['b8', 'c6'],
+      ['f1', 'c4'],
+      ['g8', 'f6'],
+      ['e1', 'g1'],
+    ]);
+    assert.deepEqual(await pieceAt(window, 'g1'), { type: 'k', color: 'w' }, 'white king should land on g1 after castling');
+    assert.deepEqual(await pieceAt(window, 'f1'), { type: 'r', color: 'w' }, 'white rook should land on f1 after castling');
+    await window.screenshot({ path: path.join(artifactDir, 'castling.png') });
 
-  await reset(window);
-  await play(window, [
-    ['e2', 'e4'],
-    ['a7', 'a6'],
-    ['e4', 'e5'],
-    ['d7', 'd5'],
-    ['e5', 'd6'],
-  ]);
-  assert.deepEqual(await pieceAt(window, 'd6'), { type: 'p', color: 'w' }, 'white pawn should land on d6 after en passant');
-  assert.equal(await pieceAt(window, 'd5'), null, 'captured pawn should be removed after en passant');
-  await window.screenshot({ path: path.join(artifactDir, 'en-passant.png') });
+    await reset(window);
+    await play(window, [
+      ['e2', 'e4'],
+      ['a7', 'a6'],
+      ['e4', 'e5'],
+      ['d7', 'd5'],
+      ['e5', 'd6'],
+    ]);
+    assert.deepEqual(await pieceAt(window, 'd6'), { type: 'p', color: 'w' }, 'white pawn should land on d6 after en passant');
+    assert.equal(await pieceAt(window, 'd5'), null, 'captured pawn should be removed after en passant');
+    await window.screenshot({ path: path.join(artifactDir, 'en-passant.png') });
 
-  await reset(window);
-  await play(window, [
-    ['f2', 'f3'],
-    ['e7', 'e5'],
-    ['g2', 'g4'],
-    ['d8', 'h4'],
-  ]);
-  state = await getState(window);
-  assert.equal(state.checkmate, true, 'fools mate should reach checkmate');
-  assert.match(state.status, /Checkmate\./, 'status line should announce checkmate');
-  await window.screenshot({ path: path.join(artifactDir, 'checkmate.png') });
+    await reset(window);
+    await play(window, [
+      ['f2', 'f3'],
+      ['e7', 'e5'],
+      ['g2', 'g4'],
+      ['d8', 'h4'],
+    ]);
+    state = await getState(window);
+    assert.equal(state.checkmate, true, 'fools mate should reach checkmate');
+    assert.match(state.status, /Checkmate\./, 'status line should announce checkmate');
+    await window.screenshot({ path: path.join(artifactDir, 'checkmate.png') });
 
-  await reset(window);
-  await window.locator('#analysis-enabled').check();
-  await waitForAnalysisReady(window);
-  await window.screenshot({ path: path.join(artifactDir, 'analysis.png') });
+    await reset(window);
+    await window.locator('#analysis-enabled').check();
+    await waitForAnalysisReady(window);
+    await window.screenshot({ path: path.join(artifactDir, 'analysis.png') });
 
-  await setMode(window, 'Play against AI');
-  await window.selectOption('#human-color', 'w');
-  await fillValue(window, '#black-move-time', 120);
-  await fillValue(window, '#black-depth', 4);
-  await window.getByTestId('new-game').click();
-  await waitForHistory(window, 0);
-  await clickSquare(window, 'e2');
-  await clickSquare(window, 'e4');
-  await waitForHistory(window, 2);
-  state = await getState(window);
-  assert.equal(state.history[1].color, 'b', 'AI should answer with a black move');
-  assert.equal(state.history[1].from.length, 2, 'AI move should include a valid origin square');
-  await window.screenshot({ path: path.join(artifactDir, 'play-against-ai.png') });
+    await setMode(window, 'Play against AI');
+    await window.selectOption('#human-color', 'w');
+    await fillValue(window, '#black-move-time', 120);
+    await fillValue(window, '#black-depth', 4);
+    await window.getByTestId('new-game').click();
+    await waitForHistory(window, 0);
+    await selectSquare(window, 'e2');
+    await clickSquare(window, 'e4');
+    await waitForHistory(window, 2);
+    state = await getState(window);
+    assert.equal(state.history[1].color, 'b', 'AI should answer with a black move');
+    assert.equal(state.history[1].from.length, 2, 'AI move should include a valid origin square');
+    await window.screenshot({ path: path.join(artifactDir, 'play-against-ai.png') });
 
-  await app.close();
-  ({ app, window } = await launchAppWindow());
+    await app.close();
+    app = null;
+    window = null;
+    ({ app, window } = await launchAppWindow());
 
-  await setMode(window, 'AI Play');
-  await fillValue(window, '#autoplay-delay', 0);
-  await fillValue(window, '#white-move-time', 120);
-  await fillValue(window, '#black-move-time', 120);
-  await fillValue(window, '#white-depth', 4);
-  await fillValue(window, '#black-depth', 4);
-  await window.getByTestId('new-game').click();
-  await waitForHistory(window, 4, 45_000);
-  const beforePause = await getState(window);
-  await window.locator('#pause-game').click();
-  await window.waitForTimeout(500);
-  const paused = await getState(window);
-  assert.equal(paused.history.length, beforePause.history.length, 'pause should stop AI vs AI progression');
-  await window.locator('#pause-game').click();
-  await waitForHistory(window, beforePause.history.length + 1, 45_000);
-  await window.screenshot({ path: path.join(artifactDir, 'ai-play.png') });
+    await setMode(window, 'AI Play');
+    await fillValue(window, '#autoplay-delay', 0);
+    await fillValue(window, '#white-move-time', 120);
+    await fillValue(window, '#black-move-time', 120);
+    await fillValue(window, '#white-depth', 4);
+    await fillValue(window, '#black-depth', 4);
+    await window.getByTestId('new-game').click();
+    await waitForHistory(window, 4, 45_000);
+    const beforePause = await getState(window);
+    await window.locator('#pause-game').click();
+    await window.waitForTimeout(500);
+    const paused = await getState(window);
+    assert.equal(paused.history.length, beforePause.history.length, 'pause should stop AI vs AI progression');
+    await window.locator('#pause-game').click();
+    await waitForHistory(window, beforePause.history.length + 1, 45_000);
+    await window.screenshot({ path: path.join(artifactDir, 'ai-play.png') });
 
-  await window.locator('#replay-prev').click();
-  await window.waitForFunction(() => window.__chessDebug.getState().inReplay === true);
-  await window.locator('#replay-last').click();
-  await window.waitForFunction(() => window.__chessDebug.getState().inReplay === false);
+    await window.locator('#replay-prev').click();
+    await window.waitForFunction(() => window.__chessDebug.getState().inReplay === true);
+    await window.locator('#replay-last').click();
+    await window.waitForFunction(() => window.__chessDebug.getState().inReplay === false);
 
-  await setMode(window, 'Human vs Human');
-  await window.getByTestId('new-game').click();
-  await window.locator('#fen-input').fill('4k3/8/8/8/8/8/4Q3/4K3 b - - 0 1');
-  await window.locator('#load-fen').click();
-  assert.deepEqual(await pieceAt(window, 'e2'), { type: 'q', color: 'w' }, 'FEN load should restore the white queen on e2');
-
-  await app.close();
+    await setMode(window, 'Human vs Human');
+    await window.getByTestId('new-game').click();
+    await window.locator('#fen-input').fill('4k3/8/8/8/8/8/4Q3/4K3 b - - 0 1');
+    await window.locator('#load-fen').click();
+    assert.deepEqual(await pieceAt(window, 'e2'), { type: 'q', color: 'w' }, 'FEN load should restore the white queen on e2');
+  } finally {
+    await app?.close().catch(() => {});
+  }
 }
 
 main().catch((error) => {

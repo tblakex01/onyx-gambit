@@ -6,6 +6,7 @@ import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPa
 const FILES = 'abcdefgh';
 const SQUARE_SIZE = 1;
 const PIECE_BASE_Y = 0.42;
+const BOARD_SURFACE_Y = 0.28;
 const LIGHT_SQUARE = 0xece2d0;
 const DARK_SQUARE = 0x101d2b;
 const HIGHLIGHT_STYLES = {
@@ -18,6 +19,13 @@ function squareToWorld(square) {
   const file = FILES.indexOf(square[0]);
   const rank = Number(square[1]) - 1;
   return new THREE.Vector3((file - 3.5) * SQUARE_SIZE, 0, (3.5 - rank) * SQUARE_SIZE);
+}
+
+function worldPointToSquare(point) {
+  const fileIndex = Math.floor(point.x + 4);
+  const rankIndex = Math.floor(4 - point.z);
+  if (fileIndex < 0 || fileIndex >= FILES.length || rankIndex < 0 || rankIndex >= 8) return null;
+  return `${FILES[fileIndex]}${rankIndex + 1}`;
 }
 
 function buildMarbleTexture(base, veins) {
@@ -226,6 +234,7 @@ export class BoardScene {
     this.timer = new THREE.Timer();
     this.raycaster = new THREE.Raycaster();
     this.pointer = new THREE.Vector2();
+    this.boardPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -BOARD_SURFACE_Y);
     this.cameraAngle = 0;
     this.targetCameraAngle = 0;
     this.squareMeshes = new Map();
@@ -347,13 +356,10 @@ export class BoardScene {
 
   bindEvents() {
     window.addEventListener('resize', () => this.resize());
-    this.canvas.addEventListener('pointerup', (event) => {
-      const rect = this.canvas.getBoundingClientRect();
-      this.pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-      this.pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-      this.raycaster.setFromCamera(this.pointer, this.camera);
-      const hit = this.raycaster.intersectObjects([...this.squareMeshes.values()])[0];
-      if (hit) this.onSquareClick(hit.object.userData.square);
+    this.canvas.addEventListener('pointerdown', (event) => {
+      if (!event.isPrimary || event.button !== 0) return;
+      const square = this.getSquareFromClientPoint(event.clientX, event.clientY);
+      if (square) this.onSquareClick(square);
     });
   }
 
@@ -476,6 +482,15 @@ export class BoardScene {
       x: rect.left + ((point.x + 1) / 2) * rect.width,
       y: rect.top + ((1 - point.y) / 2) * rect.height,
     };
+  }
+
+  getSquareFromClientPoint(clientX, clientY) {
+    const rect = this.canvas.getBoundingClientRect();
+    this.pointer.x = ((clientX - rect.left) / rect.width) * 2 - 1;
+    this.pointer.y = -((clientY - rect.top) / rect.height) * 2 + 1;
+    this.raycaster.setFromCamera(this.pointer, this.camera);
+    const hitPoint = this.raycaster.ray.intersectPlane(this.boardPlane, new THREE.Vector3());
+    return hitPoint ? worldPointToSquare(hitPoint) : null;
   }
 
   updateAnimations(delta) {
