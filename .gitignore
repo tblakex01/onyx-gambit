@@ -1,3 +1,4 @@
 node_modules
 dist
 playwright-report
+security_best_practices_report.md
