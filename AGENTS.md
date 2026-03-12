@@ -44,6 +44,7 @@ Run `npm run test:unit` and `npm run test:e2e` after any gameplay, interaction, 
 
 - The app should feel premium, not utilitarian.
 - Changes to lighting, bloom, tone mapping, or materials require checking generated screenshots in `artifacts/qa/`.
+- Keep the QA screenshot generation/upload mechanism in place, but do not commit regenerated `artifacts/qa/*.png` files unless the visual output was intentionally changed and reviewed.
 - Treat startup clipping, unreadable HUD text, and overexposed board states as bugs.
 
 ## Testing Expectations
